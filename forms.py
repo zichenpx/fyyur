@@ -1,7 +1,12 @@
 from datetime import datetime
 from flask_wtf import Form
 from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
-from wtforms.validators import DataRequired, AnyOf, URL
+from wtforms.validators import DataRequired, AnyOf, URL, ValidationError
+
+# length check -> re-use
+def length_check_120_char(form, field):
+    if len(field.data) > 120:
+        raise ValidationError('Field must be less than 120 characters.')
 
 class ShowForm(Form):
     artist_id = StringField(
@@ -18,13 +23,13 @@ class ShowForm(Form):
 
 class VenueForm(Form):
     name = StringField(
-        'name', validators=[DataRequired()]
+        'name', validators=[validators.DataRequired('Must be filled.'), length(max=120, message='Field must be less than 120 characters.')]
     )
     city = StringField(
-        'city', validators=[DataRequired()]
+        'city', [validators.DataRequired(), validators.Length(max=120,  message='Field must be less than 120 characters.')]
     )
     state = SelectField(
-        'state', validators=[DataRequired()],
+        'state', validators=[DataRequired(), length_check_120_char],
         choices=[
             ('AL', 'AL'),
             ('AK', 'AK'),
@@ -127,7 +132,6 @@ class VenueForm(Form):
     )
 
 
-
 class ArtistForm(Form):
     name = StringField(
         'name', validators=[DataRequired()]
@@ -224,7 +228,7 @@ class ArtistForm(Form):
      )
     facebook_link = StringField(
         # TODO implement enum restriction
-        
+
         'facebook_link', validators=[URL()]
      )
 

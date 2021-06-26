@@ -13,6 +13,7 @@ import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
+import sys
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -264,7 +265,7 @@ def create_venue_submission():
   except():
     db.session.rollback()
     error = True
-    #print(sys.exc_info())
+    print(sys.exc_info())
   finally:
     db.session.close()
   if error: 
@@ -484,6 +485,7 @@ def create_artist_submission():
   except():
     db.session.rollback()
     error = True
+    print(sys.exc_info())
   finally:
     db.session.close()
   if error:
@@ -566,6 +568,7 @@ def create_show_submission():
   except():
     db.session.rollback()
     error = True
+    print(sys.exc_info())
   finally:
     db.session.close()
   if error:
