@@ -1,12 +1,27 @@
 from datetime import datetime
-from flask_wtf import Form
-from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
-from wtforms.validators import DataRequired, AnyOf, URL, ValidationError
+from flask_wtf import Form, FlaskForm
+from wtforms import (
+    StringField, 
+    SelectField, 
+    SelectMultipleField, 
+    DateTimeField, 
+    BooleanField
+)
+from wtforms.validators import (
+    DataRequired, 
+    AnyOf, 
+    URL, 
+    ValidationError,
+    Regexp,
+    Length
+    )
+
+
 
 # length check -> re-use
-def length_check_120_char(form, field):
-    if len(field.data) > 120:
-        raise ValidationError('Field must be less than 120 characters.')
+# def length_check_120_char(form, field):
+#     if len(field.data) > 120:
+#         raise ValidationError('Field must be less than 120 characters.')
 
 class ShowForm(Form):
     artist_id = StringField(
@@ -23,13 +38,13 @@ class ShowForm(Form):
 
 class VenueForm(Form):
     name = StringField(
-        'name', validators=[validators.DataRequired('Must be filled.'), length(max=120, message='Field must be less than 120 characters.')]
+        'name', validators=[DataRequired('Must be filled.'), Length(max=120, message='Field must be less than 120 characters.')]
     )
     city = StringField(
-        'city', [validators.DataRequired(), validators.Length(max=120,  message='Field must be less than 120 characters.')]
+        'city', validators=[DataRequired('Must be filled.'), Length(max=120,  message='Field must be less than 120 characters.')]
     )
     state = SelectField(
-        'state', validators=[DataRequired(), length_check_120_char],
+        'state', validators=[DataRequired('Must be filled.'), Length(max=120,  message='Field must be less than 120 characters.')],
         choices=[
             ('AL', 'AL'),
             ('AK', 'AK'),
@@ -85,17 +100,17 @@ class VenueForm(Form):
         ]
     )
     address = StringField(
-        'address', validators=[DataRequired()]
+        'address', validators=[DataRequired('Must be filled.'), Length(max=120,  message='Field must be less than 120 characters.')]
     )
     phone = StringField(
-        'phone'
+        'phone', validators=[Length(max=120,  message='Field must be less than 120 characters.')]
     )
     image_link = StringField(
-        'image_link'
+        'image_link', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
     )
     genres = SelectMultipleField(
         # TODO implement enum restriction
-        'genres', validators=[DataRequired()],
+        'genres', validators=[DataRequired('Must be filled.'), Length(max=120,  message='Field must be less than 120 characters.')],
         choices=[
             ('Alternative', 'Alternative'),
             ('Blues', 'Blues'),
@@ -119,28 +134,28 @@ class VenueForm(Form):
         ]
     )
     facebook_link = StringField(
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
     )
     website_link = StringField(
-        'website_link'
+        'website_link', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
     )
 
     seeking_talent = BooleanField( 'seeking_talent' )
 
     seeking_description = StringField(
-        'seeking_description'
+        'seeking_description', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
     )
 
 
 class ArtistForm(Form):
     name = StringField(
-        'name', validators=[DataRequired()]
+        'name', validators=[DataRequired('Must be filled.'), Length(max=120, message='Field must be less than 120 characters.')]
     )
     city = StringField(
-        'city', validators=[DataRequired()]
+        'city', validators=[DataRequired('Must be filled.'), Length(max=120, message='Field must be less than 120 characters.')]
     )
     state = SelectField(
-        'state', validators=[DataRequired()],
+        'state', validators=[DataRequired('Must be filled.'), Length(max=120,  message='Field must be less than 120 characters.')],
         choices=[
             ('AL', 'AL'),
             ('AK', 'AK'),
@@ -197,13 +212,13 @@ class ArtistForm(Form):
     )
     phone = StringField(
         # TODO implement validation logic for state
-        'phone'
+        'phone', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
     )
     image_link = StringField(
-        'image_link'
+        'image_link', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
     )
     genres = SelectMultipleField(
-        'genres', validators=[DataRequired()],
+        'genres', validators=[DataRequired('Must be filled.'), Length(max=120,  message='Field must be less than 120 characters.')],
         choices=[
             ('Alternative', 'Alternative'),
             ('Blues', 'Blues'),
@@ -228,17 +243,16 @@ class ArtistForm(Form):
      )
     facebook_link = StringField(
         # TODO implement enum restriction
-
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
      )
 
     website_link = StringField(
-        'website_link'
+        'website_link', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
      )
 
     seeking_venue = BooleanField( 'seeking_venue' )
 
     seeking_description = StringField(
-            'seeking_description'
+            'seeking_description', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
      )
 
