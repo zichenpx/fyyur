@@ -3,6 +3,7 @@
 #----------------------------------------------------------------------------#
 
 import json
+from types import CoroutineType
 import dateutil.parser
 import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort
@@ -14,6 +15,7 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 import sys
+from sqlalchemy import distinct
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -41,10 +43,10 @@ class Venue(db.Model):
   phone = db.Column(db.String(120))
   image_link = db.Column(db.String(500))
   facebook_link = db.Column(db.String(120))
-  genres = db.Column(db.String(120))
+  genres = db.Column(db.String(500))
   website_link = db.Column(db.String(500))
   seeking_talent = db.Column(db.Boolean, default=False)
-  seeking_description = db.Column(db.String(500)) 
+  seeking_description = db.Column(db.String) 
 
   def __repr__(self):
     return f'<Venue {self.id} {self.name}>'
@@ -110,28 +112,49 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
-  return render_template('pages/venues.html', areas=data);
+  # data=[{
+  #   "city": "San Francisco",
+  #   "state": "CA",
+  #   "venues": [{
+  #     "id": 1,
+  #     "name": "The Musical Hop",
+  #     "num_upcoming_shows": 0,
+  #   }, {
+  #     "id": 3,
+  #     "name": "Park Square Live Music & Coffee",
+  #     "num_upcoming_shows": 1,
+  #   }]
+  # }, {
+  #   "city": "New York",
+  #   "state": "NY",
+  #   "venues": [{
+  #     "id": 2,
+  #     "name": "The Dueling Pianos Bar",
+  #     "num_upcoming_shows": 0,
+  #   }]
+  # }]
+  #return render_template('pages/venues.html', areas=data);
+  
+  # My code:
+  locals = []
+  venues = Venue.query.all()
+  places = Venue.query.distinct(Venue.city, Venue.state).all()
+  for place in places:
+    tmp_venues = []
+    for venue in venues:
+      if venue.city == place.city and venue.state == place.state:
+        #For each local made up of a city/state, there can be a list of venues (empty or not). Therefore, the tmp_venues variable receives these venues.
+        tmp_venues.append({
+          'id': venue.id,
+          'name': venue.name
+          #'num_upcoming_shows': len([show for show in venue.shows if show.start_time > datetime.now()])
+        })
+        locals.append({
+          'city': place.city,
+          'state': place.state,
+          'venue': tmp_venues
+        })
+  return render_template('pages/venues.html', areas = locals)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -242,42 +265,49 @@ def create_venue_form():
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
-  form = VenueForm(request.form)
+  form = VenueForm(request.form, meta={'csrf': False})
   error = False
-  # TODO: insert form data as a new Venue record in the db, instead
-  # TODO: modify data to be the data object returned from db insertion
-  try:
-    venue = Venue(
-      name = form.name.data,
-      city = form.city.data,
-      state = form.state.data,
-      address = form.address.data,
-      phone = form.phone.data,
-      image_link = form.image_link.data,
-      genres = form.genres.data,
-      facebook_link = form.facebook_link.data, 
-      website_link = form.website_link.data,
-      seeking_talent = form.seeking_talent.data,
-      seeking_description = form.seeking_description.data
-    )
-    db.session.add(venue)
-    db.session.commit()
-  except():
-    db.session.rollback()
-    error = True
-    print(sys.exc_info())
-  finally:
-    db.session.close()
-  if not error: 
-    # on successful db insert, flash success
-    flash('Venue ' + request.form['name'] + ' was successfully listed!')
-    return render_template('pages/home.html')
+  # TODO: insert form data as a new Venue record in the db, instead  # TODO: modify data to be the data object returned from db insertion
+  if form.validate():
+    try:
+      venue = Venue(
+        name = form.name.data,
+        city = form.city.data,
+        state = form.state.data,
+        address = form.address.data,
+        phone = form.phone.data,
+        image_link = form.image_link.data,
+        genres = form.genres.data,
+        facebook_link = form.facebook_link.data, 
+        website_link = form.website_link.data,
+        seeking_talent = form.seeking_talent.data,
+        seeking_description = form.seeking_description.data
+      )
+      db.session.add(venue)
+      db.session.commit()
+    except ValueError as e:
+      db.session.rollback()
+      error = True
+      print(sys.exc_info())
+    finally:
+      db.session.close()
+    if not error: 
+      # on successful db insert, flash success
+      flash('Venue ' + request.form['name'] + ' was successfully listed!')
+      return render_template('pages/home.html')
+    if error:
+      # TODO: on unsuccessful db insert, flash an error instead. # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.') # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
+      flash('An error occurred. Venue ' + form.name.date + ' could not be listed.')
   else:
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-    flash('An error occurred. Venue ' + form.name.date + ' could not be listed.')
-    
+    message = []
+    for field, errors in form.errors.items():
+        message.append(field + ': ' + ', '.join(errors))
+    for erro in message:
+        flash(erro)
+    form = VenueForm()
+    return render_template('forms/new_venue.html', form=form)
+  return render_template('pages/home.html')
+
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using

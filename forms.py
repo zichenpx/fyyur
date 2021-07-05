@@ -15,6 +15,8 @@ from wtforms.validators import (
     Regexp,
     Length
     )
+from flask_wtf.csrf import CSRFProtect
+import os
 
 
 
@@ -134,7 +136,7 @@ class VenueForm(Form):
         ]
     )
     facebook_link = StringField(
-        'facebook_link', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
+        'facebook_link', validators=[URL(), Length(max=500,  message='Field must be less than 120 characters.')]
     )
     website_link = StringField(
         'website_link', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
