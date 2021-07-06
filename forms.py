@@ -9,7 +9,8 @@ from wtforms import (
 )
 from wtforms.validators import (
     DataRequired, 
-    AnyOf, 
+    AnyOf,
+    Optional, 
     URL, 
     ValidationError,
     Regexp,
@@ -17,25 +18,42 @@ from wtforms.validators import (
     )
 from flask_wtf.csrf import CSRFProtect
 import os
-
-
+import re
+from datetime import timedelta
 
 # length check -> re-use
 # def length_check_120_char(form, field):
 #     if len(field.data) > 120:
 #         raise ValidationError('Field must be less than 120 characters.')
 
+def is_valid_phone(number):
+    """Validate phone number like:
+    1234567890 - no space
+    123.456.7890 - dot separator
+    123-456-7890 - dash separator
+    123 456 7890 - space separator
+
+    Patterns:
+    000 = [0-9]{3}
+    0000 = [0-9]{4}
+    -.  = ?[-. ]
+
+    Note: (? = optional) - Learn more: https://regex101.com/"""
+
+    regex = re.compile('^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$')
+    return regex.match(number)
+
 class ShowForm(Form):
     artist_id = StringField(
-        'artist_id'
+        'artist_id', validators=[DataRequired('Must be filled.')]
     )
     venue_id = StringField(
-        'venue_id'
+        'venue_id', validators=[DataRequired('Must be filled.')]
     )
     start_time = DateTimeField(
         'start_time',
         validators=[DataRequired()],
-        default= datetime.today()
+        default= datetime.today() + timedelta(days = 7)
     )
 
 class VenueForm(Form):
@@ -118,7 +136,7 @@ class VenueForm(Form):
             ('Blues', 'Blues'),
             ('Classical', 'Classical'),
             ('Country', 'Country'),
-            ('Electronic', 'Electronic'),
+            ('Electronic', 'Electronic'), 
             ('Folk', 'Folk'),
             ('Funk', 'Funk'),
             ('Hip-Hop', 'Hip-Hop'),
@@ -136,10 +154,10 @@ class VenueForm(Form):
         ]
     )
     facebook_link = StringField(
-        'facebook_link', validators=[URL(), Length(max=500,  message='Field must be less than 120 characters.')]
+        'facebook_link', validators=[Optional(), URL(), Length(max=500,  message='Field must be less than 120 characters.')]
     )
     website_link = StringField(
-        'website_link', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
+        'website_link', validators=[Optional(), URL(), Length(max=500,  message='Field must be less than 500 characters.')]
     )
 
     seeking_talent = BooleanField( 'seeking_talent' )
@@ -148,6 +166,16 @@ class VenueForm(Form):
         'seeking_description', validators=[Length(max=500,  message='Field must be less than 500 characters.')]
     )
 
+    def validate(self):
+        """Custom validate method"""
+        rv = FlaskForm.validate(self)
+        if not rv:
+            return False
+        if not is_valid_phone(self.phone.data):
+            self.phone.errors.append('Invalid phone number.')
+            return False
+        # if pass validation
+        return True
 
 class ArtistForm(Form):
     name = StringField(
@@ -214,10 +242,10 @@ class ArtistForm(Form):
     )
     phone = StringField(
         # TODO implement validation logic for state
-        'phone', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
+        'phone', validators=[Length(max=120,  message='Field must be less than 120 characters.')]
     )
     image_link = StringField(
-        'image_link', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
+        'image_link', validators=[Optional(), URL(), Length(max=120,  message='Field must be less than 120 characters.')]
     )
     genres = SelectMultipleField(
         'genres', validators=[DataRequired('Must be filled.'), Length(max=120,  message='Field must be less than 120 characters.')],
@@ -245,7 +273,7 @@ class ArtistForm(Form):
      )
     facebook_link = StringField(
         # TODO implement enum restriction
-        'facebook_link', validators=[URL(), Length(max=120,  message='Field must be less than 120 characters.')]
+        'facebook_link', validators=[Optional(), URL(), Length(max=120,  message='Field must be less than 120 characters.')]
      )
 
     website_link = StringField(

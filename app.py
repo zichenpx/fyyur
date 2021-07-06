@@ -16,6 +16,7 @@ from flask_wtf import Form
 from forms import *
 import sys
 from sqlalchemy import distinct
+import os
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -110,8 +111,6 @@ def index():
 
 @app.route('/venues')
 def venues():
-  # TODO: replace with real venues data.
-  #       num_shows should be aggregated based on number of upcoming shows per venue.
   # data=[{
   #   "city": "San Francisco",
   #   "state": "CA",
@@ -134,7 +133,8 @@ def venues():
   #   }]
   # }]
   #return render_template('pages/venues.html', areas=data);
-  
+  # TODO: replace with real venues data.
+  #       num_shows should be aggregated based on number of upcoming shows per venue.
   # My code:
   locals = []
   venues = Venue.query.all()
@@ -149,11 +149,12 @@ def venues():
           'name': venue.name
           #'num_upcoming_shows': len([show for show in venue.shows if show.start_time > datetime.now()])
         })
-        locals.append({
-          'city': place.city,
-          'state': place.state,
-          'venue': tmp_venues
-        })
+    locals.append({
+      'city': place.city,
+      'state': place.state,
+      'venue': tmp_venues
+    })
+    print('Print: ', place.city, place.state, tmp_venues)
   return render_template('pages/venues.html', areas = locals)
 
 @app.route('/venues/search', methods=['POST'])
@@ -321,17 +322,19 @@ def delete_venue(venue_id):
 #  ----------------------------------------------------------------
 @app.route('/artists')
 def artists():
+  # data=[{
+  #   "id": 4,
+  #   "name": "Guns N Petals",
+  # }, {
+  #   "id": 5,
+  #   "name": "Matt Quevedo",
+  # }, {
+  #   "id": 6,
+  #   "name": "The Wild Sax Band",
+  # }]
   # TODO: replace with real data returned from querying the database
-  data=[{
-    "id": 4,
-    "name": "Guns N Petals",
-  }, {
-    "id": 5,
-    "name": "Matt Quevedo",
-  }, {
-    "id": 6,
-    "name": "The Wild Sax Band",
-  }]
+  # My code:
+  data = Artist.query.all()
   return render_template('pages/artists.html', artists=data)
 
 @app.route('/artists/search', methods=['POST'])
@@ -491,7 +494,7 @@ def create_artist_form():
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
-  form = ArtistForm(request.form)
+  form = ArtistForm(request.form, meta={'csrf': False})
   error = False
   # called upon submitting the new artist listing form
   # TODO: insert form data as a new Venue record in the db, instead
@@ -506,7 +509,7 @@ def create_artist_submission():
       genres = form.genres.data,
       facebook_link = form.facebook_link.data,
       website_link = form.website_link.data,
-      seeking_venue = form.seeking_venue,
+      seeking_venue = form.seeking_venue.data,
       seeking_description = form.seeking_description.data
     )
     db.session.add(artist)
@@ -531,9 +534,7 @@ def create_artist_submission():
 
 @app.route('/shows')
 def shows():
-  # displays list of shows at /shows
-  # TODO: replace with real venues data.
-  #       num_shows should be aggregated based on number of upcoming shows per venue.
+  
   data=[{
     "venue_id": 1,
     "venue_name": "The Musical Hop",
@@ -570,9 +571,14 @@ def shows():
     "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
     "start_time": "2035-04-15T20:00:00.000Z"
   }]
+  # displays list of shows at /shows
+  # TODO: replace with real venues data.
+  #       num_shows should be aggregated based on number of upcoming shows per venue.
+  # My code:
+  
   return render_template('pages/shows.html', shows=data)
 
-@app.route('/shows/create')
+@app.route('/shows/create', methods=['GET'])
 def create_shows():
   # renders form. do not touch.
   form = ShowForm()
