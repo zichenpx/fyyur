@@ -173,17 +173,19 @@ def search_venues():
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
   search_term = request.values.get('search_term')
-  print('search key word:', search_term)
-  q = Venue.query.filter(Venue.name == search_term)
+  search = request.form.get('search_term', '')
+  print('1 -> search key word:', search_term)
+  print('1 ->', search)
+  q = Venue.query.filter(Venue.name.ilike('%' + search + '%')).all()
   response={
     "count": q.count(),
     "data": [{
-      "id": q.id,
+       "id": q.id,
       "name": q.name,
       # "num_upcoming_shows": 0,
     }]
   }
-  print(q.all())
+  print('3 ->', q)
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
 @app.route('/venues/<int:venue_id>')
@@ -301,6 +303,8 @@ def create_venue_submission():
       db.session.add(venue)
       db.session.commit()
     except ValueError as e:
+      if app.config['ENV'] == 'development':
+        print(e)
       db.session.rollback()
       error = True
       print(sys.exc_info())
