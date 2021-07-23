@@ -50,6 +50,7 @@ class Venue(db.Model):
   seeking_talent = db.Column(db.Boolean, default=False)
   seeking_description = db.Column(db.String) 
   shows = db.relationship('Show', backref='venue', lazy='joined', cascade='all, delete')
+  # Note: The above configuration establishes a collection of Show objects on Venue called Venue.shows.
 
   def __repr__(self):
     return f'<Venue {self.id} {self.name}>'
@@ -158,7 +159,7 @@ def venues():
       'state': place.state,
       'venues': tmp_venues
     })
-    print('Print: ', place.city, place.state, tmp_venues)
+    # print('Print: ', place.city, place.state, tmp_venues)
   return render_template('pages/venues.html', areas = locals)
 
 @app.route('/venues/search', methods=['POST'])
@@ -294,25 +295,27 @@ def show_venue(venue_id):
   # }
   # My code:
   venue = Venue.query.get(venue_id)
-  shows = Show.query.join(Venue, Show.venue_id == Venue.id).join(Artist, Artist.id == Show.artist_id).all()
+  shows = Show.query.join(Venue, Show.venue_id == Venue.id).join(Artist, Artist.id == Show.artist_id).filter(venue.id==venue_id).all()
+  print(shows)
   upcoming_shows = []
   past_shows = []
+  current_time = datetime.now()
   for show in shows:
-    if shows.start_time.strftime >= datetime.datetime():
-    # shows.start_time.strftime("%m/%d/%Y, %H:%M")
+    if show.start_time > current_time:
+      shows.start_time.strftime("%m/%d/%Y, %H:%M")
       upcoming_shows.append({
-        "artist_id": show.artis_id,
+        "artist_id": show.artist_id,
         "artist_name": Artist.name,
         "artist_image_link": Artist.image_link,
-        "start_time": shows.start_time.strftime("%m/%d/%Y, %H:%M")
+        "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
       })
-    if shows.start_time.strftime < datetime.datetime():
-      past_shows.append = [{
-        "artist_id": show.artis_id,
+    if show.start_time < current_time:
+      past_shows.append({
+        "artist_id": show.artist_id,
         "artist_name": Artist.name,
         "artist_image_link": Artist.image_link,
-        "start_time": shows.start_time.strftime("%m/%d/%Y, %H:%M")
-      }]
+        "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
+      })
   data={
     "id": venue.id,
     "name": venue.name,
@@ -331,7 +334,8 @@ def show_venue(venue_id):
     "past_shows_count": len(past_shows),
     "upcoming_shows_count": len(upcoming_shows),
   }
-  data = list(filter(lambda d: d['id'] == venue_id, [data]))[0]
+  # This is code only to work for static data. 
+  # data = list(filter(lambda d: d['id'] == venue_id, [data]))[0]
   return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -704,19 +708,21 @@ def shows():
   # My code:
   data = []
   shows = Show.query.join(Venue, Show.venue_id == Venue.id).join(Artist, Artist.id == Show.artist_id).all()
-  print (shows)
+  print('shows: ', shows)
+  num = len(shows)
+  print('number: ', num)
   for show in shows:
     data.append({
       "venue_id": show.venue_id,
-      "venue_name": Venue.name,
+      "venue_name": show.venue.name,
       "artist_id": show.artist_id,
-      "artist_name": Artist.name,
-      "artist_image_link": Artist.image_link,
+      "artist_name": show.artist.name,
+      "artist_image_link": show.artist.image_link,
       "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
       # str(show.start_time) # TypeError: Parser must be a string or character stream, not datetime
       # "start_time": str(show.start_time)
     })
-    return render_template('pages/shows.html', shows=data)
+  return render_template('pages/shows.html', shows=data)
 
 @app.route('/shows/create', methods=['GET'])
 def create_shows():
