@@ -18,75 +18,7 @@ import sys
 from sqlalchemy import distinct
 import os
 from datetime import datetime
-#----------------------------------------------------------------------------#
-# App Config.
-#----------------------------------------------------------------------------#
-
-app = Flask(__name__)
-
-moment = Moment(app)
-app.config.from_object('config')
-db = SQLAlchemy(app)
-# TODO: connect to a local postgresql database
-migrate = Migrate(app, db)
-
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-  __tablename__ = 'venue'
-
-  id = db.Column(db.Integer, primary_key=True)
-  name = db.Column(db.String(120))
-  city = db.Column(db.String(120))
-  state = db.Column(db.String(120))
-  address = db.Column(db.String(120))
-  phone = db.Column(db.String(120))
-  image_link = db.Column(db.String(500))
-  facebook_link = db.Column(db.String(120))
-  genres = db.Column(db.String(500))
-  website_link = db.Column(db.String(500))
-  seeking_talent = db.Column(db.Boolean, default=False)
-  seeking_description = db.Column(db.String) 
-  shows = db.relationship('Show', backref='venue', lazy='joined', cascade='all, delete')
-  # Note: The above configuration establishes a collection of Show objects on Venue called Venue.shows.
-
-  def __repr__(self):
-    return f'<Venue {self.id} {self.name}>'
-
-class Artist(db.Model):
-  __tablename__ = 'artist'
-
-  id = db.Column(db.Integer, primary_key=True)
-  name = db.Column(db.String)
-  city = db.Column(db.String(120))
-  state = db.Column(db.String(120))
-  phone = db.Column(db.String(120))
-  genres = db.Column(db.String(120))
-  image_link = db.Column(db.String(500))
-  facebook_link = db.Column(db.String(120))
-  website_link = db.Column(db.String(500))
-  seeking_venue = db.Column(db.Boolean, default=False)
-  seeking_description = db.Column(db.String(500))
-  shows = db.relationship('Show', backref='artist', lazy='joined', cascade='all, delete')
-  
-  def __repr__(self):
-    return f'<Artist {self.id} {self.name}>'
-
-class Show(db.Model):
-  __tablename__ = 'show'
-
-  id = db.Column(db.Integer, primary_key=True)
-  artist_id = db.Column(db.Integer, db.ForeignKey('artist.id'), nullable=False)
-  venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
-  start_time = db.Column(db.DateTime)
-  
-  def __repr__(self):
-    # return f'<Show {self.id}, Artist {self.artist_id}, Venue {self.venue_id}, Start time: {self.start_time}>'
-    return 'Show(%s, %s, %s)' % (self.venue_id, self.artist_id, self.start_time)
-
-# TODO Implem,ent Show and Artist models, and complete all model relationships and properties, as a database migration.
+from models import *
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -108,7 +40,11 @@ app.jinja_env.filters['datetime'] = format_datetime
 
 @app.route('/')
 def index():
-  return render_template('pages/home.html')
+  # Stand Out: Recent Listed Venues & Artist
+  new_venues = Venue.query.order_by(Venue.id.desc()).limit(10)
+  new_artists = Artist.query.order_by(Artist.id.desc()).limit(10)
+  print('Venues: ', new_venues)
+  return render_template('pages/home.html', venues = new_venues, artists = new_artists)
 
 
 #  Venues
@@ -294,28 +230,22 @@ def show_venue(venue_id):
   #   "upcoming_shows_count": 1,
   # }
   # My code:
-  venue = Venue.query.get(venue_id)
-  shows = Show.query.join(Venue, Show.venue_id == Venue.id).join(Artist, Artist.id == Show.artist_id).filter(venue.id==venue_id).all()
-  print(shows)
+  venue = Venue.query.get_or_404(venue_id)
+  shows = db.session.query(Show, Artist).join(Artist, Artist.id == Show.artist_id).filter(Show.venue_id == venue_id).all()
   upcoming_shows = []
   past_shows = []
   current_time = datetime.now()
-  for show in shows:
-    if show.start_time > current_time:
-      shows.start_time.strftime("%m/%d/%Y, %H:%M")
-      upcoming_shows.append({
-        "artist_id": show.artist_id,
-        "artist_name": Artist.name,
-        "artist_image_link": Artist.image_link,
-        "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
-      })
-    if show.start_time < current_time:
-      past_shows.append({
-        "artist_id": show.artist_id,
-        "artist_name": Artist.name,
-        "artist_image_link": Artist.image_link,
-        "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
-      })
+  for show, artist in shows:
+    temp_show = {
+        'artist_id': artist.id,
+        'artist_name': artist.name,
+        'artist_image_link': artist.image_link,
+        'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+    }
+    if show.start_time <= current_time:
+        past_shows.append(temp_show)
+    else:
+        upcoming_shows.append(temp_show)
   data={
     "id": venue.id,
     "name": venue.name,
@@ -397,10 +327,20 @@ def create_venue_submission():
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using
   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
-
+  # My code:
+  venue = Venue.query.get_or_404(venue_id)
+  venue_name = venue.name
+  try:
+    db.session.delete(venue)
+    db.session.commit()
+    flash('Venue ' + venue_name + ' was deleted.')
+  except:
+    db.session.rollback()
+  finally:
+    db.session.close()
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepage
-  return None
+  return redirect(url_for('index'))
 
 #  Artists
 #  ----------------------------------------------------------------
@@ -524,26 +464,21 @@ def show_artist(artist_id):
   #   "upcoming_shows_count": 3,
   # }
   # My code:
-  artist = Artist.query.get(artist_id)
-  shows = Show.query.join(Venue, Show.venue_id == Venue.id).join(Artist, Artist.id == Show.artist_id).all()
+  artist = Artist.query.get_or_404(artist_id)
+  shows = db.session.query(Show, Venue).join(Venue, Venue.id == Show.venue_id).filter(Show.artist_id == artist_id).all()
   upcoming_shows = []
   past_shows = []
-  for show in shows:
-    if shows.start_time.strftime >= datetime.datetime():
-    # shows.start_time.strftime("%m/%d/%Y, %H:%M")
-      upcoming_shows.append({
-        "artist_id": show.artis_id,
-        "artist_name": Artist.name,
-        "artist_image_link": Artist.image_link,
-        "start_time": shows.start_time.strftime("%m/%d/%Y, %H:%M")
-      })
-    if shows.start_time.strftime < datetime.datetime():
-      past_shows.append = [{
-        "artist_id": show.artis_id,
-        "artist_name": Artist.name,
-        "artist_image_link": Artist.image_link,
-        "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
-      }]
+  for show, venue in shows:
+    temp_show = {
+      'venue_id': venue.id,
+      'venue_name': venue.name,
+      'venue_image_link': venue.image_link,
+      'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+    }
+    if show.start_time <= datetime.now():
+      past_shows.append(temp_show)
+    else:
+      upcoming_shows.append(temp_show)
   data={
     "id": artist_id,
     "name": artist.name,
@@ -559,34 +494,43 @@ def show_artist(artist_id):
     "past_shows_count":len(past_shows),
     "upcoming_shows_count": len(upcoming_shows),
   }
-  data = list(filter(lambda d: d['id'] == artist_id, [data]))[0]
+  # data = list(filter(lambda d: d['id'] == artist_id, [data]))[0]
   return render_template('pages/show_artist.html', artist=data)
 
 #  Update
 #  ----------------------------------------------------------------
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
-  form = ArtistForm()
-  artist={
-    "id": 4,
-    "name": "Guns N Petals",
-    "genres": ["Rock n Roll"],
-    "city": "San Francisco",
-    "state": "CA",
-    "phone": "326-123-5000",
-    "website": "https://www.gunsnpetalsband.com",
-    "facebook_link": "https://www.facebook.com/GunsNPetals",
-    "seeking_venue": True,
-    "seeking_description": "Looking for shows to perform at in the San Francisco Bay Area!",
-    "image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80"
-  }
   # TODO: populate form with fields from artist with ID <artist_id>
-  return render_template('forms/edit_artist.html', form=form, artist=artist)
+  # My code:
+  form = ArtistForm()
+  artist_query = Artist.query.get_or_404(artist_id)
+  print(artist_query)
+  if artist_query:
+    form.name.data = artist_query.name,
+    form.genres.data = artist_query.genres,
+    form.city.data = artist_query.city,
+    form.state.data = artist_query.state,
+    form.phone.data = artist_query.phone,
+    form.website_link.data = artist_query.website_link,
+    form.facebook_link.data = artist_query.facebook_link,
+    form.seeking_venue.data = artist_query.seeking_venue,
+    form.seeking_description.data = artist_query.seeking_description,
+    form.image_link.data = artist_query.image_link
+    return render_template('forms/edit_artist.html', form=form, artist=artist_query)
+    
+  # ---
+  # Method on Knowledge:
+  # artist = Artist.query.filter_by(id=artist_id).first_or_404()
+  # form = ArtistForm(obj=artist)
+  # return render_template('forms/edit_artist.html', form=form, artist=artist)
 
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
   # TODO: take values from the form submitted, and update existing
   # artist record with ID <artist_id> using the new attributes
+  # My code:
+  form = ArtistForm(request.form, meta={'csrf': False})
 
   return redirect(url_for('show_artist', artist_id=artist_id))
 

@@ -17,6 +17,22 @@
 		<h3>
 			<a href="/shows/create"><button class="btn btn-default btn-lg">Post a show</button></a>
 		</h3>
+		<p class="lead">New Venues</p>
+		{% for venue in venues %}
+		<a href="/venues/{{ venue.id }}">
+			<h3>
+				{{ venue.name }}
+			</h3>
+		</a>
+		{% endfor %}
+		<p class="lead">New Artists</p>
+		{% for artist in artists %}
+		<a href="/artists/{{ artist.id }}">
+			<h3>
+				{{ artist.name }}
+			</h3>
+		</a>
+		{% endfor %}
 	</div>
 	<div class="col-sm-6 hidden-sm hidden-xs">
 		<img id="front-splash" src="{{ url_for('static',filename='img/front-splash.jpg') }}" alt="Front Photo of Musical Band" />
