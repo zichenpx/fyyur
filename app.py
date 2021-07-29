@@ -112,41 +112,60 @@ def search_venues():
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
   # search_term = request.values.get('search_term')
-  search = request.form.get('search_term', '')
-  venues = Venue.query.filter(Venue.name.ilike('%' + search + '%')).all()
-  cities = Venue.query.filter(Venue.city.ilike('%' + search + '%')).all()
-  addresses = Venue.query.filter(Venue.address.ilike('%' + search + '%')).all()
-  if len(venues) != 0:
-    response = {
-      'count': len(venues),
-      'data':[]
+  search_term = request.form.get('search_term', '')
+  search_by = request.form.get('search_by', '')
+  places = Venue.query.distinct(Venue.city, Venue.state).all()
+
+  if search_term and search_by:
+    search_by_split = search_by.split(',')
+    str_city = search_by_split[0]
+    str_state = search_by_split[1]
+    venues = Venue.query.filter(Venue.name.ilike('%' + search_term + '%')).outerjoin(Venue.city==str_city, Venue.state==str_state).all()
+    response={
+      "count": len(venues),
+      "data": []
     }
     for venue in venues:
-      response['data'].append({
-        'id': venue.id,
-        'name': venue.name
-      })
-  elif len(venues) == 0 and len(cities) != 0:    
-    response = {
-      'count': len(cities),
-      'data':[]
+      response={
+        "data": [{
+          "id": venue.id,
+          "name": venue.name,
+          # "num_upcoming_shows": ,
+        }]
+      }   
+  elif search_term:
+    venues = Venue.query.filter(Venue.name.ilike('%' + search_term + '%')).all()
+    response={
+      "count": len(venues),
+      "data": []
     }
-    for city in cities:
-      response['data'].append({
-        'id': city.id,
-        'name': city.name
-      })
-  elif len(venues) == 0 and len(cities) == 0 and len(addresses) != 0:    
-    response = {
-      'count': len(addresses),
-      'data':[]
+    for venue in venues:
+      response={
+        "data": [{
+          "id": venue.id,
+          "name": venue.name,
+          # "num_upcoming_shows": ,
+        }]
+      }
+  elif search_by:
+    search_by_split = search_by.split(',')
+    str_city = search_by_split[0]
+    str_state = search_by_split[1]
+    venues = Venue.query.filter(Venue.city==str_city, Venue.state==str_state).all()
+    response={
+      "count": len(venues),
+      "data": []
     }
-    for address in addresses:
-      response['data'].append({
-        'id': address.id,
-        'name': address.name
-      })
-  return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+    for venue in venues:
+      response={
+        "data": [{
+          "id": venue.id,
+          "name": venue.name,
+          # "num_upcoming_shows": ,
+        }]
+      }
+  return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''), search_by = request.form.get('search_by', ''))
+
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
