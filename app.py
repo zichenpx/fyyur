@@ -521,23 +521,29 @@ def show_artist(artist_id):
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
   # TODO: populate form with fields from artist with ID <artist_id>
-  # My code:
-  form = ArtistForm()
-  artist_query = Artist.query.get_or_404(artist_id)
-  print(artist_query)
-  if artist_query:
-    form.name.data = artist_query.name
-    form.genres.data = artist_query.genres
-    form.city.data = artist_query.city
-    form.state.data = artist_query.state
-    form.phone.data = artist_query.phone
-    form.website_link.data = artist_query.website_link
-    form.facebook_link.data = artist_query.facebook_link
-    form.seeking_venue.data = artist_query.seeking_venue
-    form.seeking_description.data = artist_query.seeking_description
-    form.image_link.data = artist_query.image_link
-    return render_template('forms/edit_artist.html', form=form, artist=artist_query)
-  return render_template('errors/404.html')
+  # My code sol 1:
+  # form = ArtistForm()
+  # artist_query = Artist.query.get_or_404(artist_id)
+  # print(artist_query)
+  # if artist_query:
+  #   form.name.data = artist_query.name
+  #   form.genres.data = artist_query.genres
+  #   form.city.data = artist_query.city
+  #   form.state.data = artist_query.state
+  #   form.phone.data = artist_query.phone
+  #   form.website_link.data = artist_query.website_link
+  #   form.facebook_link.data = artist_query.facebook_link
+  #   form.seeking_venue.data = artist_query.seeking_venue
+  #   form.seeking_description.data = artist_query.seeking_description
+  #   form.image_link.data = artist_query.image_link
+  #   return render_template('forms/edit_artist.html', form=form, artist=artist_query)
+  # return render_template('errors/404.html')
+  # ------
+  # My code sol 2:
+  artist = Artist.query.get_or_404(artist_id)
+  form = ArtistForm(obj=artist)
+  return render_template('forms/edit_artist.html', form=form, artist=artist)
+
 
 @app.route('/artists/<int:artist_id>/edit', methods=['POST'])
 def edit_artist_submission(artist_id):
@@ -552,8 +558,8 @@ def edit_artist_submission(artist_id):
 def edit_venue(venue_id):
   # TODO: populate form with values from venue with ID <venue_id>
   # My code:
-  venue = Venue.query.filter_by(id=venue_id).first_or_404()
-  print('PRINT: ', venue)
+  venue = Venue.query.get_or_404(venue_id)
+  # venue = Venue.query.filter_by(id=venue_id).first_or_404()
   form = VenueForm(obj=venue)
   return render_template('forms/edit_venue.html', form=form, venue=venue)
 
